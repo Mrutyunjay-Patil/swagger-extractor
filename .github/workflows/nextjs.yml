@@ -45,17 +45,23 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: ${{ steps.detect-package-manager.outputs.manager }}
 
+      # Install pnpm globally if it's the detected manager
       - name: Install pnpm (if needed)
         if: ${{ steps.detect-package-manager.outputs.manager == 'pnpm' }}
         run: npm install -g pnpm
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
+      # Restore pnpm store cache (best practice for pnpm)
+      - name: Restore pnpm store cache
+        if: ${{ steps.detect-package-manager.outputs.manager == 'pnpm' }}
+        uses: actions/cache@v4
         with:
-          static_site_generator: next
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
 
+      # Restore Next.js and node_modules cache
       - name: Restore cache
         uses: actions/cache@v4
         with:
@@ -68,6 +74,11 @@ jobs:
 
       - name: Install dependencies
         run: ${{ steps.detect-package-manager.outputs.manager }} ${{ steps.detect-package-manager.outputs.command }}
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        with:
+          static_site_generator: next
 
       - name: Build with Next.js
         run: ${{ steps.detect-package-manager.outputs.runner }} next build
